@@ -1,0 +1,229 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<title>FirmStep Queue System</title>
+		<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+		<link href="./css/materialize.css" media="screen" rel="stylesheet" type="text/css"/>
+		<script src="./js/taffy.js"></script>
+		<script>
+			var customerDB = TAFFY();
+		</script>
+	</head>
+	<body>
+		<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+    	<script type="text/javascript" src="js/materialize.js"></script>
+		<div class="row">
+			<div class="col s12 l6">
+				<div class="card">
+					<div class="card-content">
+						<h5><span class="card-title">New Customer</span></h5>
+						<br />
+						<h6>Services</h6>
+						<br />
+						<div id="serviceOptionList">
+							<p>
+								<input name="serviceOption" type="radio" id="housingOption" value="Housing"/>
+								<label for="housingOption">Housing</label>
+							</p>
+							<p>
+								<input name="serviceOption" type="radio" id="benefitsOption" value="Benefits"/>
+								<label for="benefitsOption">Benefits</label>
+							</p>
+							<p>
+								<input name="serviceOption" type="radio" id="councilTaxOption" value="Council Tax"/>
+								<label for="councilTaxOption">Council Tax</label>
+							</p>
+							<p>
+								<input name="serviceOption" type="radio" id="flyTypingOption" value="Fly-Tipping"/>
+								<label for="flyTypingOption">Fly-Tipping</label>
+							</p>
+							<p>
+								<input name="serviceOption" type="radio" id="missedBinOption" value="Missed Bin"/>
+								<label for="missedBinOption">Missed Bin</label>
+							</p>
+						</div>
+						<ul class="tabs">
+					        <li id="citizenTab" class="tab col s4" value="Citizen"><a class="active" href="#citizen">Citizen</a></li>
+					        <li id="organisationTab" class="tab col s4" value="Organisation"><a href="#organisation">Organisation</a></li>
+					        <li id="anonymousTab" class="tab col s4" value="Anonymous"><a href="#anonymous">Anonymous</a></li>
+					    </ul>
+					    <div id="citizen">
+					    	<form class="col s12" id="citizenForm">
+								<div class="input-field col s12">
+									<select id="customerTitle">
+										<option value="" disabled selected>Choose your option</option>
+										<option value="Mr">Mr</option>
+										<option value="Miss">Miss</option>
+										<option value="Mrs">Mrs</option>
+										<option value="Ms">Ms</option>
+										<option value="Dr">Dr</option>
+									</select>
+									<label>Title</label>
+								</div>
+								<div class="input-field col s12">
+									<input id="firstName" type="text">
+									<label for="firstName">First Name</label>
+								</div>
+								<div class="input-field col s12">
+									<input id="lastName" type="text">
+									<label for="lastName">Last Name</label>
+								</div>
+							</form>
+						</div>
+						<div id="organisation">
+							<form class="col s12" id="organisationForm">
+								<div class="input-field col s12">
+									<input id="orgName" type="text">
+									<label for="orgName">Name</label>
+								</div>
+							</form>
+						</div>
+						<div id="anonymous">
+						</div>
+						<div class="center">
+							<button class="btn waves-effect waves-light" type="submit" name="action">Submit
+    							<i class="material-icons right">send</i>
+  							</button>
+  						</div>
+					</div>
+				</div>
+			</div>
+			<div class="col s12 l6">
+				<div class="card">
+					<div class="card-content">
+						<h5><span class="card-title">Queue</span></h5>
+						<p>List of customers being queued</p>
+						<div id="queueTable">
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<script>
+			var currentService;
+    		var currentTab="Citizen";
+			$(document).ready(function() {
+    			$('select').material_select();
+				$("input[type=radio]").click(function(){
+  					currentService= this.value;
+	  			});
+
+  				$('.tab').click(function(){
+   					currentTab =$(this).attr('value');
+				});
+
+    			$('button[name="action"]').click(function(){
+    				var servicesValidation = checkServiceOptions();
+    				if(servicesValidation==true){
+    					submitCustomer();
+    					populateQueueTbl();
+    					Materialize.updateTextFields();
+    					var select = $('select');
+    					select.prop('selectedIndex', 0);
+    					$('select').material_select();
+    				}else{
+    					alert('Please select a service before submitting to queue');
+    				}
+    			});
+	  				createQueueTbl();
+  			});
+
+			function submitCustomer(){
+				var customerID = customerDB().count()+1;
+  				var customerEntry = new Object();
+  				customerEntry.customerID=customerID;
+  				customerEntry.customerType = currentTab;
+  				if(currentTab=="Citizen"){
+  					var customerName = getFullName();	
+  					customerEntry.customerName = customerName;
+  					document.getElementById("customerTitle").selectIndex=0;
+  					document.getElementById("firstName").value="";
+  					document.getElementById("lastName").value="";	
+  				}
+  				else if(currentTab=="Organisation"){
+  					var nameOfOrganisation=getOrganisationName();
+  					customerEntry.customerName = nameOfOrganisation;
+  					document.getElementById("orgName").value=""
+  				}
+  				else{
+	  					customerEntry.customerName = "Anonymous";
+  				}
+  				customerEntry.customerService = currentService;
+  				var newCustomer = JSON.stringify(customerEntry);
+  				customerDB.insert(newCustomer);
+  				clearServiceOption();
+  			}
+
+			function clearServiceOption(){
+				var serviceOptions = document.getElementsByName("serviceOption");
+   				for(var i=0;i<serviceOptions.length;i++){
+      				serviceOptions[i].checked = false;
+   				}
+			}
+
+			function checkServiceOptions(){
+				var optionSelected = false;
+				var serviceOptions = document.getElementsByName("serviceOption");
+   				for(var i=0;i<serviceOptions.length;i++){
+      				if(serviceOptions[i].checked == true){
+      					optionSelected = true;
+      				}
+   				}
+   				return optionSelected;
+			}
+
+			function getFullName(){
+				var customerTtl = $("#customerTitle").val();
+				var fullname = customerTtl.concat( ' ',document.getElementById("firstName").value,' ',document.getElementById("lastName").value);
+				return fullname;
+			}
+
+			function getOrganisationName(){
+				var organisationName = document.getElementById("orgName").value;
+				return organisationName;
+			}
+			
+  			function createQueueTbl(){
+  				var tableDiv = document.getElementById("queueTable");
+  				var queueTbl = document.createElement("table");
+  				queueTbl.setAttribute("class","striped");
+  				queueTbl.setAttribute("id","customerTable");
+  				var tblHeader = document.createElement("thead");
+  				var tblHeaderRow=document.createElement("tr");
+  				var tblHeaderText=["Customer ID", "Type", "Customer Name", "Customer Service"];
+  				for (var i=0; i<tblHeaderText.length;i++){
+  					var tblHeaderCell = document.createElement("th");
+  					var tblHeaderTxt=document.createTextNode(tblHeaderText[i]);
+  					tblHeaderCell.appendChild(tblHeaderTxt);
+  					tblHeaderRow.appendChild(tblHeaderCell);
+  				}
+  				tblHeader.appendChild(tblHeaderRow);
+				tblBody = document.createElement("tbody");
+  				queueTbl.appendChild(tblHeader);
+  				queueTbl.appendChild(tblBody);
+  				tableDiv.appendChild(queueTbl);
+  			}
+
+  			function populateQueueTbl(){
+  				var table = document.getElementById("customerTable");
+  				table.tBodies[0].innerHTML="";
+  				var queueTblBodyRow = document.getElementsByTagName("tbody");
+  				var tblData=JSON.parse(customerDB().stringify());
+  				for(var prop in tblData){
+  					var tblBodyRow=document.createElement("tr");
+  					for (var innerProp in tblData[prop])
+  					{
+  						if(innerProp!="___id" && innerProp!="___s"){
+  							var tblBodyCell = document.createElement("td");
+  							var cellText = document.createTextNode(tblData[prop][innerProp])
+  							tblBodyCell.appendChild(cellText);
+  							tblBodyRow.appendChild(tblBodyCell);
+  						}
+  					}
+  					table.tBodies[0].appendChild(tblBodyRow);
+  				}
+  			}
+
+		</script>
+	</body>
+</html>
